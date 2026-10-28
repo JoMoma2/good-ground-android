@@ -1,0 +1,15 @@
+node_modules/
+build/
+test-results/
+__pycache__/
+android/.gradle/
+android/.signing/
+android/local.properties
+android/app/build/
+*.apk
+*.zip
+*.jks
+*.keystore
+
+# Temporary office-document locks
+.~lock.*#

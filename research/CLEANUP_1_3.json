@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-22T08:04:47.112454+00:00",
+  "scope": "/home/quinten/Good Ground",
+  "modelFilesFound": [],
+  "removedGeneratedCopies": [
+    {
+      "path": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/source-final-1.2.0",
+      "files": 144,
+      "bytes": 2702974,
+      "verifiedAgainst": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/GoodGround-1.2.0-Source.zip",
+      "artifactSHA256": "e0e60b29d3f6195dfd9b73048c061c51d58e0c7820a2ce1ce0463d17c686d2d3"
+    },
+    {
+      "path": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/preview-1.2.0",
+      "files": 11,
+      "bytes": 726971,
+      "verifiedAgainst": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/GoodGround-1.2.0-unsigned.ipa",
+      "artifactSHA256": "9c83c0a19b5ea0c1e977dc14d2d11d583352bd62561db6eb2cc90812cf7785e5"
+    },
+    {
+      "path": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/handoff-preview",
+      "files": 19,
+      "bytes": 871533,
+      "verifiedAgainst": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/GoodGround-1.1.1-unsigned.ipa",
+      "artifactSHA256": "9c9897e4432efd1416f218a65149222f5c7bfad6197eb8a61f096a055b1c47c8"
+    }
+  ],
+  "preservedUncertainCopies": [
+    {
+      "path": "01 - iPhone App/02 - Source Code/GoodGround-iPhone/build/source-check-1.2.0",
+      "reason": "Not an exact subset of retained archive; preserved rather than assuming disposable",
+      "differingFiles": [
+        "GoodGround-iPhone/VALIDATION.md",
+        "GoodGround-iPhone/validation/v1.2.0/README.md"
+      ]
+    }
+  ],
+  "removedBytecode": [
+    "scripts/__pycache__/package-source.cpython-314.pyc",
+    "scripts/__pycache__/advanced-content.cpython-314.pyc",
+    "scripts/__pycache__/repackage-ios.cpython-314.pyc",
+    "scripts/__pycache__/extend-content.cpython-314.pyc"
+  ],
+  "browserOrPhoneDataTouched": false,
+  "intentionalFixturesAndReportsPreserved": true
+}

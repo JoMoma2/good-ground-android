@@ -1,0 +1,36 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'local.goodground.training'
+    compileSdk 35
+    buildFeatures { buildConfig true }
+    defaultConfig {
+        applicationId 'local.goodground.training'
+        minSdk 26
+        targetSdk 35
+        versionCode 12
+        versionName '1.7.1'
+        resValue 'string', 'app_name', 'Good Ground'
+    }
+    sourceSets { main { assets.srcDirs = ['../../app'] } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    def localPassword = rootProject.file('.signing/password')
+    def localKey = rootProject.file('.signing/goodground.jks')
+    def signingPath = System.getenv('GG_ANDROID_KEYSTORE') ?: (localKey.exists() ? localKey.absolutePath : null)
+    def localSecret = localPassword.exists() ? localPassword.text.trim() : null
+    if (signingPath) {
+        signingConfigs { personal {
+            storeFile file(signingPath)
+            storePassword (System.getenv('GG_ANDROID_STORE_PASSWORD') ?: localSecret)
+            keyAlias System.getenv('GG_ANDROID_KEY_ALIAS') ?: 'goodground'
+            keyPassword (System.getenv('GG_ANDROID_KEY_PASSWORD') ?: localSecret)
+        } }
+    }
+    buildTypes {
+        debug { applicationIdSuffix '.debug'; versionNameSuffix '-test'; resValue 'string', 'app_name', 'Good Ground Test' }
+        release {
+            minifyEnabled false
+            if (signingPath) signingConfig signingConfigs.personal
+        }
+    }
+    lint { abortOnError true }
+}
