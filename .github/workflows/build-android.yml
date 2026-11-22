@@ -1,69 +1,96 @@
-
 name: Build Good Ground Android APK
-
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-
+    branches: [main]
 permissions:
   contents: read
-
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  build-android:
-    name: Build Android APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+  interface:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        browser: [chromium, webkit]
     steps:
-      - name: Download Good Ground source
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
         with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Install Android SDK 35
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Verify application and curriculum
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify the full interface and simulated collaboration
+        env:
+          GG_BROWSER: ${{ matrix.browser }}
+        run: |
+          node tests/ui.cjs
+          node tests/updates-ui.cjs
+          node tests/edge-ui.cjs
+          node tests/native-bridge.cjs
+          node tests/handoff-ui.cjs
+          node tests/curriculum-ui.cjs
+          node tests/expansion-ui.cjs
+          node tests/library-ui.cjs
+          node tests/redesign-ui.cjs
+          node tests/sharing-ui.cjs
+          node tests/android-ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-interface-${{ matrix.browser }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+  build-android:
+    name: Build Android APK
+    needs: interface
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up supported Android command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - name: Install project SDK and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify source, curriculum, migration and packaging
         run: |
           npm run check
           npm test
-
-      - name: Build Android debug APK
+          npm run test:package
+      - name: Build and lint the separate debug test edition
         working-directory: android
+        run: bash gradlew --no-daemon :app:assembleDebug :app:lintDebug
+      - name: Verify APK metadata, signature and source resources
         run: |
-          chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug
-
-      - name: Verify APK
-        run: |
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$APK"
-          ls -lh "$APK"
-          sha256sum "$APK"
-
-      - name: Upload downloadable APK
+          mkdir -p build/android
+          cp android/app/build/outputs/apk/debug/app-debug.apk build/android/GoodGround-Android-v1.8.0-debug.apk
+          python3 scripts/verify-apk.py build/android/GoodGround-Android-v1.8.0-debug.apk
+      - name: Upload downloadable APK and verification
         uses: actions/upload-artifact@v4
         with:
-          name: GoodGround-Android-v1.7.1-debug-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: GoodGround-Android-v1.8.0-debug-APK
+          path: |
+            build/android/GoodGround-Android-v1.8.0-debug.apk
+            build/android/GoodGround-Android-v1.8.0-debug.apk.sha256
+            build/android/GoodGround-Android-v1.8.0-debug.verification.json
           if-no-files-found: error
           retention-days: 30

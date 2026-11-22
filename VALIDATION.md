@@ -1,3 +1,11 @@
+# Android 1.8.0 publication checks
+
+The 1.8 candidate passes 143 application/migration/protocol tests and five clean-source packaging tests. The Android bridge/resource boundary includes all four new modules. Chromium and WebKit browser coverage, APK compilation/lint, package/version/certificate verification and exact bundled-resource comparison run in GitHub Actions before the downloadable artifact is uploaded. Consult the latest run for the final result; browser simulations do not prove physical Android runtime or wireless operation. Android wireless is not implemented. No 1.8 emulator/physical-device pass is claimed here. Native APK signing in this workflow is debug only, with the separate `.debug` application ID.
+
+Earlier validation below describes the previous baseline and must not be interpreted as a 1.8 device test.
+
+---
+
 # Good Ground 1.7.1 validation
 
 Current results are in `validation/v1.7.1`; earlier reports are retained.

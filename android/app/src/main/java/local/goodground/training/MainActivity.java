@@ -40,7 +40,7 @@ public final class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private static final String BASE = "https://" + HOST + "/assets/web/";
     private static final int IMPORT = 41, EXPORT = 42;
-    private static final Set<String> ASSETS = new HashSet<>(Arrays.asList("index.html", "app.js", "core.js", "data.js", "data.json", "styles.css", "mark.svg", "marker.js", "guide.js", "tailoring.js", "history.js", "lesson-controls.js", "native-boot.js"));
+    private static final Set<String> ASSETS = new HashSet<>(Arrays.asList("index.html", "app.js", "core.js", "data.js", "data.json", "styles.css", "mark.svg", "marker.js", "guide.js", "tailoring.js", "history.js", "lesson-controls.js", "sharing.js", "nearby.js", "collaboration-ui.js", "nearby-ui.js", "native-boot.js"));
     private final ExecutorService files = Executors.newSingleThreadExecutor();
     private WebView web;
     private FrameLayout root;
@@ -77,7 +77,7 @@ public final class MainActivity extends Activity {
             if (store != null) boot = store.boot();
             else boot = new JSONObject().put("native",true).put("platform","android").put("state",JSONObject.NULL)
                 .put("error","The local save folder is unavailable. Export any unsaved records before closing.");
-            boot.put("smoke",smoke); boot.put("appVersion",BuildConfig.VERSION_NAME);
+            boot.put("nearbySupported",false); boot.put("smoke",smoke); boot.put("appVersion",BuildConfig.VERSION_NAME);
             bootstrap = "window.GOOD_GROUND_BOOT=" + boot + ";";
             try (InputStream in = getAssets().open("web/index.html")) {
                 html = LocalStore.readText(in).replace("<script defer src=\"data.js\">", "<script src=\"native-boot.js\"></script><script defer src=\"data.js\">");

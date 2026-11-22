@@ -95,3 +95,12 @@ body{overflow-wrap:anywhere}.field>span,.field small,.practice-recency>small,.ta
 html{scroll-padding-bottom:calc(var(--nav-height,calc(70px + var(--safe-bottom))) + var(--floating-controls-height,0px) + 12px)}
 .lesson-actions-slot{margin:20px 0 8px}.lesson-actions.is-floating{position:fixed;left:var(--controls-left);width:var(--controls-width);bottom:calc(var(--nav-height,calc(70px + var(--safe-bottom))) + 8px);z-index:10;box-shadow:var(--shadow)}
 @media print{.lesson-actions-slot{display:none}}
+
+/* Optional dog-specific collaboration stays within existing profile and lesson areas. */
+.shared-text,.shared-note p,.shared-version p {white-space:pre-wrap;overflow-wrap:anywhere}
+.shared-note,.shared-trainer,.shared-version {padding:1rem 0;border-bottom:1px solid var(--line)}
+.training-notes {margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--line)}
+.shared-conflict {border-left:3px solid #b07135}
+.shared-step-list {padding-left:1.25rem}.shared-step-list li {margin:.9rem 0}.shared-step-list small {display:block;margin:.25rem 0}
+.verification-code {font-size:2.5rem;font-weight:700;letter-spacing:.2em;text-align:center;font-variant-numeric:tabular-nums}
+.nearby-status {overflow-wrap:anywhere}.daily-practice [data-action="skip-familiar"] {display:block;margin:.65rem auto 0}

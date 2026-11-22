@@ -1,10 +1,10 @@
 {
   "name": "good-ground-android",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "private": true,
-  "description": "Offline dog training companion for Android, ported from iPhone 1.3.0",
+  "description": "Offline dog training companion for Android",
   "scripts": {
-    "test": "node tests/core.test.cjs && node tests/updates.test.cjs && node tests/marker.test.cjs && node tests/projects-history.test.cjs && node tests/curriculum-rework.test.cjs && node tests/expansion-practice.test.cjs && node tests/lesson-display.test.cjs && node tests/setup-review.test.cjs && node tests/content-review.test.cjs",
+    "test": "node tests/core.test.cjs && node tests/updates.test.cjs && node tests/marker.test.cjs && node tests/projects-history.test.cjs && node tests/curriculum-rework.test.cjs && node tests/expansion-practice.test.cjs && node tests/lesson-display.test.cjs && node tests/setup-review.test.cjs && node tests/content-review.test.cjs && node --test tests/sharing.test.cjs tests/nearby.test.cjs",
     "test:ui": "node tests/ui.cjs",
     "preview": "python3 -m http.server 8765 --bind 127.0.0.1 --directory app/web",
     "check": "node scripts/check.cjs && node scripts/audit-curriculum.cjs && node scripts/audit-content-review.cjs",
@@ -16,7 +16,9 @@
     "test:android": "node tests/android-ui.cjs",
     "test:expansion": "node tests/expansion-ui.cjs",
     "test:library": "node tests/library-ui.cjs",
-    "test:redesign": "node tests/redesign-ui.cjs"
+    "test:redesign": "node tests/redesign-ui.cjs",
+    "test:sharing": "node tests/sharing-ui.cjs",
+    "test:package": "python3 tests/source-package.test.py"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.1",

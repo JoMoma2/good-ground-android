@@ -61,7 +61,7 @@ final class LocalStore {
     synchronized String previousBackup() throws Exception {
         JSONObject backup = new JSONObject();
         try (InputStream in = previous.openRead()) {
-            backup.put("format", "good-ground-backup"); backup.put("version", 3);
+            backup.put("format", "good-ground-backup"); backup.put("version", 4);
             backup.put("state", new JSONObject(readText(in)));
         }
         return backup.toString();

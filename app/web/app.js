@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const C=GroundCore, D=GOOD_GROUND_DATA, I=C.index(D), $=s=>document.querySelector(s), E=C.esc;
+  const S=GroundSharing.withCore(GroundCore), C=GroundCore, D=GOOD_GROUND_DATA, I=C.index(D), $=s=>document.querySelector(s), E=C.esc;
   const itemFor=id=>I.steps.get(id)||I.archivedSteps.get(id);
   const native=!!window.GOOD_GROUND_BOOT?.native, STORAGE='good-ground-state-v1';
   let currentLesson='',training,profileDogId='',planDogId='',trendDogId='';
@@ -13,6 +13,8 @@
     state=initial?C.validateState(initial):C.freshState();
     loadError=window.GOOD_GROUND_BOOT?.error||'';
   } catch {state=C.freshState();loadError='Your saved data could not be read. Import a backup before making new changes; the original saved data has been kept.';}
+  if(!loadError)state=S.identity(state);
+  let nearbyUI=null;const saveWaiters=[];
   if(loadError)saveStatus='Saved records need recovery';
   let settingsSaveBusy=false,settingsWaiter=null;
   let needsDogChoice=C.dogs(state).length>1,guideIndex=0,profileContinuation=null,breedTarget=null,breedQuery='',markerPointer=null,markerKey=null;
@@ -78,7 +80,16 @@
     }
     showSave();
   }
-  function commit(next) {try{next=C.observeProgress(D,next);}catch(error){toast(error.message,true);return false;}if(!C.withinStorageLimit(next)){toast('Records are at the storage limit. Export a backup, then shorten notes or remove older sessions before saving more.',true);return false;}if(loadError){toast('Restore a backup before making changes.',true);return false;}state=next;flush();return true;}
+  function commit(next) {try{next=S.prepare(C.observeProgress(D,next));}catch(error){toast(error.message,true);return false;}if(!C.withinStorageLimit(next)){toast('Records are at the storage limit. Export a backup, then shorten notes or remove older sessions before saving more.',true);return false;}if(loadError){toast('Restore a backup before making changes.',true);return false;}state=next;flush();return true;}
+  async function durableCommit(next){
+    if(!commit(next))throw new Error('The exchange could not be saved. Your previous records are intact.');
+    const revision=state.revision;if(acknowledged>=revision)return;
+    if(!native)throw new Error('Browser storage could not save the exchange.');
+    await new Promise((resolve,reject)=>{const waiter={revision,resolve:()=>{clearTimeout(waiter.timer);resolve();},reject:()=>{clearTimeout(waiter.timer);reject(new Error('The phone did not confirm saving the exchange.'));}};waiter.timer=setTimeout(()=>{const i=saveWaiters.indexOf(waiter);if(i>=0)saveWaiters.splice(i,1);waiter.reject();},10000);saveWaiters.push(waiter);});
+  }
+  function refreshSharing(){if(!dirty&&!$('#modal-root').children.length)render({preserveScroll:true});}
+  const collaborationUI=GroundCollaborationUI.create({C,S,getState:()=>state,commit,render,navigate,toast,openModal,closeModal,link,backBar,formError:()=>formError(),data:D,onDisconnect:(dog,peer)=>nearbyUI?.forget(dog,peer)});
+  nearbyUI=GroundNearbyUI.create({C,S,M:GroundSharing,getState:()=>state,save:durableCommit,sendNative:send,refresh:refreshSharing,toast,openModal,closeModal,isBusy:()=>dirty||!!$('#modal-root').children.length,link,backBar});
   function toast(message,error=false) {const el=$('#toast');el.textContent=message;el.className=error?'visible error':'visible';clearTimeout(toast.timeout);toast.timeout=setTimeout(()=>el.className='',error?6500:3200);}
   function openModal(title,body,wide=false) {
     modalReturn=document.activeElement;
@@ -86,7 +97,7 @@
     document.body.classList.add('modal-open');$('#app').inert=true;
     requestAnimationFrame(()=>($('#modal-root [autofocus]')||$('#modal-root button, #modal-root input, #modal-root select'))?.focus());
   }
-  function closeModal() {$('#modal-root').innerHTML='';document.body.classList.remove('modal-open');$('#app').inert=false;modalReturn?.focus?.();const resume=profileContinuation;profileContinuation=null;if(resume)resume();}
+  function closeModal() {nearbyUI?.modalClosed();$('#modal-root').innerHTML='';document.body.classList.remove('modal-open');$('#app').inert=false;modalReturn?.focus?.();const resume=profileContinuation;profileContinuation=null;if(resume)resume();}
   function confirmAction(title,body,action,label='Continue',danger=false) {openModal(title,`<p>${E(body)}</p><div class="button-row"><button class="button secondary" data-action="close-modal">Cancel</button><button class="button ${danger?'danger':''}" data-action="${action}">${E(label)}</button></div>`);}
   function selectOptions(items,value,blank) {return (blank!==undefined?`<option value="">${E(blank)}</option>`:'')+items.map(item=>{const [v,label]=Array.isArray(item)?item:[item,item];return `<option value="${E(v)}" ${v===value?'selected':''}>${E(label)}</option>`;}).join('');}
   function inputField(label,name,value='',type='text',hint='') {return `<label class="field"><span>${E(label)}</span><input name="${name}" type="${type}" value="${E(value)}" ${type==='number'?'min="0" step="any"':''} maxlength="5000">${hint?`<small>${E(hint)}</small>`:''}</label>`;}
@@ -238,7 +249,7 @@
       overview:{title:'About this skill',body:`<p>${E(skill.goal)}</p><h3>General equipment and safety notes</h3><p>${E(skill.setup)}</p>`},
       easier:{title:'Make it easier',body:`<p>${E(step.easier)}</p>`},
       prerequisites:dependencyLinks('met')?{title:'Build on these prerequisites',body:`<p>These earlier steps support this lesson. Missing prerequisites stay visible above.</p><div class="stack">${dependencyLinks('met')}</div>`}:null,
-      notes:{title:'Your notes',body:dogNotes(id)},
+      notes:{title:'Your notes',body:dogNotes(id)+collaborationUI.lessonExtras(skill,step)},
       sources:{title:'Why this approach? · Sources',body:`<p>These references support the teaching approach. This step sequence is an original practical adaptation, not a promise of treatment success.</p>${sourceLinks(skill.sources)}`},
       downstream:downstream.length?{title:'Where this skill can lead',body:`<p>Explore whenever you’re curious; each lesson’s own prerequisites still apply.</p><ul>${downstream.map(x=>`<li>${link('lesson',x.step.id,E(x.skill.title))}</li>`).join('')}</ul>`}:null,
       steps:{title:'All steps and project maps',body:stepList+projects.map(project=>`<div class="lesson-project">${link('project',project.code,E(project.title)+' · project overview','text-link')}${projectOutline(project,id)}</div>`).join('')},
@@ -255,7 +266,7 @@
     <div class="lesson-actions-slot"><div class="lesson-actions ${state.settings.lessonMarker?'':'without-marker'}" role="group" aria-label="Training controls">${state.settings.lessonMarker?`<div class="lesson-marker"><button class="button" data-marker aria-label="Play marker sound" aria-describedby="marker-feedback">${icon('sound')}<span data-marker-label>Mark & reward</span></button>${link('clicker',id,'Open clicker','text-link')}</div>`:''}<button class="button secondary" data-action="progress" data-id="${E(id)}">${icon('check')}Set progress</button>${state.settings.lessonMarker?'<p id="marker-feedback" class="marker-feedback" role="status" aria-live="polite" aria-atomic="true">Tap to mark, then reward.</p>':''}</div></div>
     <nav class="step-navigation" aria-label="Previous and next teaching step">${n>0?link('lesson',skill.steps[n-1].id,icon('back')+'Previous','button ghost'):'<span></span>'}${n<skill.steps.length-1?link('lesson',skill.steps[n+1].id,'Next step'+icon('arrow'),'button ghost'):link('topic',skill.sheet,'More in this topic'+icon('arrow'),'button ghost')}</nav>
     <p class="fineprint">A recorded stage is a planning aid. Your dog’s comfort, health, and ability to leave always come first. ${link('basics','','Read the training essentials')}</p>
-    <details class="extra-information extra-guidance"><summary>Extra Information <small>Help, notes and background</small></summary>${['easier','notes','prerequisites','downstream','sources','overview','steps','earlier'].map(block).join('')}</details>`;
+    <details class="extra-information extra-guidance"><summary>Extra Information <small>Help, notes and background${collaborationUI.noteCount(skill.code)?' · '+collaborationUI.noteCount(skill.code)+' training notes':''}</small></summary>${['easier','notes','prerequisites','downstream','sources','overview','steps','earlier'].map(block).join('')}</details>`;
   }
   function chooseStep(id) {
     const item=itemFor(id);if(!item)return;
@@ -298,15 +309,18 @@
     const due=C.practiceRecords(D,state).filter(x=>x.days!==null&&x.days>=state.settings.reminderDays);if(!due.length)return '';
     return `<aside class="refresher-note" aria-labelledby="refresher-title"><div class="section-heading"><h2 id="refresher-title">A gentle refresher?</h2><button class="icon-button" data-action="dismiss-reminders" aria-label="Hide reminders for today">${icon('close')}</button></div><p>A few familiar skills have no recent practice log. A comfortable, easy refresher could fit today.</p><ul>${due.slice(0,3).map(x=>`<li>${link('lesson',x.skill.steps[0].id,E(x.skill.title))}${C.dogs(state).length>1?`<small>${E(x.dogName)}</small>`:''}<small>${x.lastPractice?'Last logged '+E(C.elapsedLabel(x.practiceDays).toLowerCase()):'Consistency recorded '+E(C.elapsedLabel(x.days).toLowerCase())+'; no practice log yet'}</small></li>`).join('')}</ul>${link('practice','',due.length>3?'See all '+due.length+' skills':'Your practice rhythm','text-link')}<small>A missing log doesn’t mean your dog has forgotten. Rest is always an option.</small></aside>`;
   }
-  function dailyPracticeCard(queue=C.dailyPractice(D,state)) {
+  let rotationContext='',practiceOrder=[];
+  const practiceKey=x=>x.dogId+'~'+x.skill.code;
+  function dailyQueue(){const q=C.dailyPractice(D,state),context=q.today+'|'+state.trainer.id+'|'+C.selectedDogs(state).map(d=>d.id).join(',');if(context!==rotationContext){practiceOrder=[];rotationContext=context;}const pending=new Map(q.pending.map(x=>[practiceKey(x),x]));practiceOrder=practiceOrder.filter(k=>pending.has(k));for(const k of pending.keys())if(!practiceOrder.includes(k))practiceOrder.push(k);return {...q,pending:practiceOrder.map(k=>pending.get(k))};}
+  function dailyPracticeCard(queue=dailyQueue()) {
     if(!queue.records.length)return '';
     const next=queue.pending[0],name=next?.dogName||'Your dog',skill=next?.skill;
     return `<section class="daily-practice" aria-labelledby="daily-practice-title"><div class="section-heading"><h2 id="daily-practice-title">Familiar skills for today</h2>${link('practice','','Practice rhythm','text-link')}</div>
     <p class="fineprint">${queue.practiced} of ${queue.records.length} learned ${C.selectedDogs(state).length>1?'dog-and-skill pairs':'skills'} practiced today · ${E(dateLabel(queue.today))}. Choose a comfortable refresher or rest; completion stays learned.</p>
-    <div id="daily-practice-next" tabindex="-1">${next?`<p class="eyebrow">FOR ${E(name)}</p><h3>${E(skill.title)}</h3><p>${E(skill.goal)}</p><p class="fineprint">${next.lastPractice?'Last practice: '+E(dateLabel(next.lastPractice)):'No practice logged yet.'}</p><details class="daily-review"><summary>Review the familiar exercise</summary><p><strong>Your cue:</strong> ${E(C.dogState(state,next.dogId).cues[skill.code]||skill.cue)}</p><p>${E(skill.steps.at(-1).teach)}</p><p><strong>Keep it comfortable:</strong> ${E(skill.steps.at(-1).easier)}</p>${link('lesson',skill.steps.at(-1).id,'Open the full lesson','text-link')}</details><button class="button full" data-action="quick-practice" data-id="${E(skill.steps.at(-1).id)}" data-dog-id="${E(next.dogId)}" data-daily-practice>Practiced today · ${E(name)}</button>`:'<h3>All familiar skills have a practice log today.</h3><p>Enjoy a rest or choose something fun. Your next set appears on a new day.</p>'}</div></section>`;
+    <div id="daily-practice-next" tabindex="-1">${next?`<p class="eyebrow">FOR ${E(name)}</p><h3>${E(skill.title)}</h3><p>${E(skill.goal)}</p><p class="fineprint">${next.lastPractice?'Last practice: '+E(dateLabel(next.lastPractice)):'No practice logged yet.'}</p><details class="daily-review"><summary>Review the familiar exercise</summary><p><strong>Your cue:</strong> ${E(C.dogState(state,next.dogId).cues[skill.code]||skill.cue)}</p><p>${E(skill.steps.at(-1).teach)}</p><p><strong>Keep it comfortable:</strong> ${E(skill.steps.at(-1).easier)}</p>${link('lesson',skill.steps.at(-1).id,'Open the full lesson','text-link')}</details><button class="button full" data-action="quick-practice" data-id="${E(skill.steps.at(-1).id)}" data-dog-id="${E(next.dogId)}" data-daily-practice>Practiced today · ${E(name)}</button><button class="text-button" data-action="skip-familiar" data-key="${E(practiceKey(next))}">Skip for Now</button>`:'<h3>All familiar skills have a practice log today.</h3><p>Enjoy a rest or choose something fun. Your next set appears on a new day.</p>'}</div></section>`;
   }
   function practiceView() {
-    const queue=C.dailyPractice(D,state),records=queue.records;
+    const queue=dailyQueue(),records=queue.records;
     return `${backBar('learn','','Lessons')}<div class="page-title"><span class="eyebrow">KEEP THE FAMILIAR FEELING GOOD</span><h1>Your practice<br>rhythm.</h1><p>Revisit completed foundations and walk skills, including Heel. One comfortable refresher is enough to log a practice day; nothing here resets learning.</p></div>${dailyPracticeCard(queue)}${records.length?`<details class="practice-library"><summary>All learned fundamentals · ${records.length}</summary>${records.map(x=>`<section class="reading-card"><h2>${E(x.skill.title)}</h2>${C.dogs(state).length>1?`<p class="quiet">For ${E(x.dogName)}</p>`:''}<p>${x.lastPractice?'Last practice logged '+E(C.elapsedLabel(x.practiceDays).toLowerCase())+' · '+E(dateLabel(x.lastPractice)):'No practice logged yet. '+(x.learnedOn?'Consistency recorded '+E(dateLabel(x.learnedOn))+'.':'')}</p><div class="button-row">${x.lastPractice===queue.today?pill('Practiced today','complete'):`<button class="button secondary" data-action="quick-practice" data-id="${E(x.skill.steps.at(-1).id)}" data-dog-id="${E(x.dogId)}">Practiced today</button>`}${link('lesson',x.skill.steps.at(-1).id,'Review lesson','text-link')}</div></section>`).join('')}</details>`:empty('Room for a rhythm','Once all steps of a foundation or walk skill are recorded as consistent for a selected dog, it appears here. Use Journal → Add a session for other practice.',link('learn','','Explore lessons','button secondary'))}<p class="fineprint">Practice is recorded separately for each dog in Journal. Detailed Skill practice entries for any step of a skill count too. Edit or remove a journal entry to correct a practice date. The list follows the local date on this device.</p><p class="fineprint">${link('basics','practice-rhythms','How practice reminders work')} · ${link('settings','','Change reminders')}</p>`;
   }
   function progressModal(id) {
@@ -386,7 +400,7 @@
     const dog=C.dogs(state).find(d=>d.id===id)||C.selectedDogs(state)[0];profileDogId=dog.id;
     const p=dog.profile;
     return `${backBar('more','','More')}<div class="page-title"><span class="eyebrow">THE INDIVIDUAL IN FRONT OF YOU</span><h1>Your dog,<br>their own way.</h1><p>${C.dogs(state).length>1?'Profile for '+E(p.name)+'. ':''}Optional notes help you choose useful lessons. No diagnosis or starting distance is assumed.</p></div>
-    <form id="profile-form" data-dog-id="${E(profileDogId)}" class="form-card">${formError()}${inputField('Their name','name',p.name)}${inputField('Age / life stage','age',p.age)}${breedField(p.breed)}${textField('Favorite rewards','rewards',p.rewards,'Food, play, sniffing, contact, or distance—whatever they safely enjoy.')}${supportFields(dog.tailoring)}
+    <p>${link('household',profileDogId,'Household rules & trainers','button secondary')}</p><form id="profile-form" data-initial-profile="${E(JSON.stringify(p))}" data-profile-heads="${E(JSON.stringify(Object.fromEntries(GroundSharing.PROFILE.map(k=>[k,S.heads(state,profileDogId,'profile',k).map(o=>o.id)]))))}" data-dog-id="${E(profileDogId)}" class="form-card">${formError()}${inputField('Their name','name',p.name)}${inputField('Age / life stage','age',p.age)}${breedField(p.breed)}${textField('Favorite rewards','rewards',p.rewards,'Food, play, sniffing, contact, or distance—whatever they safely enjoy.')}${supportFields(dog.tailoring)}
     <fieldset><legend>Current priorities</legend><p class="quiet">These bring relevant available lessons nearer the top of Today.</p><div class="choice-grid">${D.triggers.map(t=>`<label class="check-chip"><input type="checkbox" name="priority" value="${E(t.name)}" ${p.priorities.includes(t.name)?'checked':''}><span>${E(t.name)}</span></label>`).join('')}</div></fieldset>
     ${textField('Their comfortable baseline','comfort',p.comfort,'Face, posture, movement, sniffing, food-taking, and ordinary recovery.')}${textField('Health, pain, movement, or veterinary directions','health',p.health)}${textField('Equipment and safe retreat','equipment',p.equipment)}${textField('History to share with your professional','history',p.history,'Include bites, attempted bites, redirection, guarding, or sudden changes if relevant.')}${textField('Your veterinary / behavior support','help',p.help)}<button class="button" type="submit">Save profile</button><p class="fineprint">Stored locally. Export a backup from More to keep a separate copy.</p></form>`;
   }
@@ -491,8 +505,8 @@
     }
   }
   function moreView() {
-    const rows=[['settings','tune','Settings','Lesson display, appearance, clicker and backups'],['sources','book','Source library','Training essentials, evidence and references'],['dogs','dog','Your dogs','Profiles and separate training records'],['tutorial','learn','How to use Good Ground','A brief, practical tour you can replay'],['feedback','heart','Feedback','Share an idea or report a problem'],['about','shield','About Good Ground','Privacy, app guide and compatibility']];
-    return `<div class="page-title"><span class="eyebrow">YOUR COMPANION TOOLKIT</span><h1>A little more<br>good ground.</h1><p>The useful details, all in one place.</p></div><div class="menu-list">${rows.map(([p,i,t,d])=>link(p,'',`<div class="menu-icon">${icon(i)}</div><span><strong>${E(t)}</strong><small>${E(d)}</small></span>${icon('arrow')}`,'menu-row')).join('')}</div><div class="local-card">${icon('shield')}<h2>At home on your phone.</h2><p>No account needed for training. No analytics or background uploads. Training records stay local; feedback is sent only when you choose Submit.</p><small data-save-indicator>${E(saveStatus)}</small></div>`;
+    const rows=[['trainer','heart','Your trainer profile','Your name and individual training identity'],['settings','tune','Settings','Lesson display, appearance, clicker and backups'],['sources','book','Source library','Training essentials, evidence and references'],['dogs','dog','Your dogs','Profiles and separate training records'],['tutorial','learn','How to use Good Ground','A brief, practical tour you can replay'],['feedback','heart','Feedback','Share an idea or report a problem'],['about','shield','About Good Ground','Privacy, app guide and compatibility']];
+    return `<div class="page-title"><span class="eyebrow">YOUR COMPANION TOOLKIT</span><h1>A little more<br>good ground.</h1><p>The useful details, all in one place.</p></div><div class="menu-list">${rows.map(([p,i,t,d])=>link(p,'',`<div class="menu-icon">${icon(i)}</div><span><strong>${E(t)}</strong><small>${E(d)}</small></span>${icon('arrow')}`,'menu-row')).join('')}</div><div class="local-card">${icon('shield')}<h2>At home on your phone.</h2><p>No account needed for training. No analytics or background uploads. Training records stay on your phone unless you deliberately share a dog or export a backup; feedback is sent only when you choose Submit.</p><small data-save-indicator>${E(saveStatus)}</small></div>`;
   }
   function plansView() {
     const chosen=C.selectedDogs(state);if(!chosen.some(d=>d.id===planDogId))planDogId=chosen[0].id;const dog=C.dogState(state,planDogId);
@@ -576,7 +590,7 @@
     return `${backBar('more','','More')}<div class="page-title"><span class="eyebrow">COMFORTABLE TO READ</span><h1>Make yourself<br>at home.</h1><p>Appearance changes never change your training records.</p></div><form id="settings-form" class="form-card">${formError()}${selectField('Color theme','theme',[['light','Warm light'],['dark','Quiet dark'],['system','Follow device appearance']],state.settings.theme)}${selectField('Text size','textSize',[['normal','Comfortable'],['large','Larger']],state.settings.textSize)}${selectField('Gentle refresher reminders','reminderDays',[[7,'After a week without a recent record'],[14,'After two weeks'],[30,'After a month'],[0,'Turn reminders off']].map(([v,t])=>[String(v),t]),String(state.settings.reminderDays))}<p class="fineprint">A practical nudge for learned foundations and walk skills, not a scientific forgetting deadline.</p><label class="check-chip"><input name="lessonMarker" type="checkbox" ${state.settings.lessonMarker?'checked':''}><span>Show the clicker and lesson marker</span></label><p class="fineprint">Mark & reward stays within reach alongside Set progress. ${state.settings.lessonMarker?'Choose a sound and volume in '+link('clicker','','Clicker')+'.':'Enable the marker to show its training controls.'}</p><button class="button" type="submit">Save settings</button></form>${link('backup','',icon('save')+'Backup & restore','button secondary full')}`;
   }
   function aboutView() {
-    return `${backBar('more','','More')}<div class="page-title"><span class="brand-kicker">GOOD GROUND</span><h1>Practice kindly.<br>Keep it local.</h1><p>A personal dog-training companion built around comfortable progress and useful teaching guides.</p></div><div class="reading-stack"><section class="reading-card"><h2>On this phone</h2><p>Version 1.7.1 · Curriculum ${D.version} · Updated ${E(D.updated)}.</p><p>${D.skills.length} skills and programs · ${I.steps.size} teaching steps · ${D.sources.length} reference records.</p><p>Your records are stored privately on this phone. It has no analytics, remote fonts, advertising or background data uploads. Optional feedback sends only what you type to Formspree when you submit it. Android’s automatic app backup and device transfer are disabled for these records; you control any exported files.</p></section><section class="reading-card"><h2>Built for real life</h2><p>The lessons are educational planning guides. Sudden changes, pain, severe panic, bites or redirection, and no comfortable starting setup deserve individual veterinary and behavior support. Secure equipment, barriers, and distance can help while arranging that care.</p></section><section class="reading-card"><h2>On Android</h2><p>Records stay in this app’s private storage. Install updates over the existing app to retain them. Uninstalling or clearing storage removes those records, so export a backup first. Android’s document picker handles backup files. Keep Android System WebView or Chrome updated for the bundled interface.</p></section></div>`;
+    return `${backBar('more','','More')}<div class="page-title"><span class="brand-kicker">GOOD GROUND</span><h1>Practice kindly.<br>Keep it local.</h1><p>A personal dog-training companion built around comfortable progress and useful teaching guides.</p></div><div class="reading-stack"><section class="reading-card"><h2>On this phone</h2><p>Version 1.8.0 · Curriculum ${D.version} · Updated ${E(D.updated)}.</p><p>${D.skills.length} skills and programs · ${I.steps.size} teaching steps · ${D.sources.length} reference records.</p><p>Your records are stored privately on this phone. It has no analytics, remote fonts, advertising or background data uploads. Optional feedback sends only what you type to Formspree when you submit it. Android’s automatic app backup and device transfer are disabled for these records; you control any exported files.</p></section><section class="reading-card"><h2>Built for real life</h2><p>The lessons are educational planning guides. Sudden changes, pain, severe panic, bites or redirection, and no comfortable starting setup deserve individual veterinary and behavior support. Secure equipment, barriers, and distance can help while arranging that care.</p></section><section class="reading-card"><h2>On Android</h2><p>Records stay in this app’s private storage. Install updates over the existing app to retain them. Uninstalling or clearing storage removes those records, so export a backup first. Android’s document picker handles backup files. Keep Android System WebView or Chrome updated for the bundled interface.</p></section></div>`;
   }
   function notFound() {return empty('That page is not here','Return to the library to find the lesson you need.',link('learn','','Open the library','button'));}
   function currentTab(type) {return ['project','lesson','topic','learn','clicker','trends','plans','plan','practice'].includes(type)?'learn':['journal','session','entry','edit-session'].includes(type)?'journal':type==='today'?'today':'more';}
@@ -587,8 +601,8 @@
     const [part,raw='']=location.hash.replace(/^#\/?/,'').split('/');let type=part||'today';let id='';try{id=decodeURIComponent(raw);}catch{}
     if(!loadError&&!window.GOOD_GROUND_BOOT?.smoke){if(!state.household.setupComplete)type='setup';else if(!state.household.tutorialSeenVersion)type='tutorial';else if(needsDogChoice)type='choose-dogs';}
     const startup=['setup','tutorial','choose-dogs'].includes(type);
-    route=type;renderedHash=location.hash||'#/today';
-    const views={feedback:feedbackView,setup:setupView,tutorial:guideView,'choose-dogs':dogChooserView,'add-dog':addDogView,practice:practiceView,clicker:()=>clickerView(id),today:todayView,learn:learnView,topic:()=>topicView(id),project:()=>projectView(id),lesson:()=>lessonView(id),journal:journalView,session:()=>sessionForm(id),entry:()=>entryView(id),'edit-session':()=>sessionForm(id,true),trends:trendsView,more:moreView,profile:()=>profileView(id),dogs:dogsView,plans:plansView,plan:()=>planView(id),basics:basicsView,evidence:evidenceView,sources:sourcesView,source:()=>sourceView(id),backup:backupView,settings:settingsView,about:aboutView};
+    nearbyUI?.onRoute(type);route=type;renderedHash=location.hash||'#/today';
+    const views={trainer:collaborationUI.trainerView,household:()=>collaborationUI.householdView(id),'trainer-progress':()=>collaborationUI.peerView(id),nearby:()=>nearbyUI.view(id),feedback:feedbackView,setup:setupView,tutorial:guideView,'choose-dogs':dogChooserView,'add-dog':addDogView,practice:practiceView,clicker:()=>clickerView(id),today:todayView,learn:learnView,topic:()=>topicView(id),project:()=>projectView(id),lesson:()=>lessonView(id),journal:journalView,session:()=>sessionForm(id),entry:()=>entryView(id),'edit-session':()=>sessionForm(id,true),trends:trendsView,more:moreView,profile:()=>profileView(id),dogs:dogsView,plans:plansView,plan:()=>planView(id),basics:basicsView,evidence:evidenceView,sources:sourcesView,source:()=>sourceView(id),backup:backupView,settings:settingsView,about:aboutView};
     $('#app').innerHTML=`<div class="app-shell"><div class="top-safe"></div><div id="save-warning" class="load-error" role="alert" ${saveStatus.includes('not')?'':'hidden'}><strong>This change could not be saved.</strong><p>Keep the app open. Retry, or export a backup to protect your work.</p><button class="button secondary" data-action="retry-save">Retry save</button> <button class="button secondary" data-action="export">Export backup</button></div>${loadError?`<div class="load-error" role="alert"><strong>Saved data needs attention.</strong><p>${E(loadError)}</p><button class="button secondary" data-action="import">Restore a backup</button></div>`:''}<main id="main" data-route="${E(type)}" data-page-id="${E(id)}" class="page ${type==='today'?'home-page':''}" tabindex="-1">${!startup?trainingContext():''}${(views[type]||notFound)()}</main><nav class="tab-bar" aria-label="Main navigation" ${startup?'hidden':''}>${[['today','home','Today'],['learn','learn','Lessons'],['journal','journal','Journal'],['more','more','More']].map(([p,i,t])=>`<a href="${path(p)}" class="tab ${currentTab(type)===p?'active':''}" ${currentTab(type)===p?'aria-current="page"':''}>${icon(i)}<span>${t}</span></a>`).join('')}</nav></div>`;
     if(type==='feedback'&&feedbackPending)document.querySelectorAll('#feedback-form textarea,#feedback-form input').forEach(el=>el.disabled=true);
     applySettings();
@@ -617,7 +631,7 @@
     try {
       pendingBackup=C.parseBackup(text);
       const backupDogs=C.dogs(pendingBackup),sessionCount=backupDogs.reduce((n,d)=>n+d.sessions.length,0),stepCount=backupDogs.reduce((n,d)=>n+Object.keys(d.progress).length,0);
-      openModal('Restore this backup?',`<p>This file contains <strong>${backupDogs.length} dog ${backupDogs.length===1?'profile':'profiles'}</strong>, <strong>${sessionCount} sessions</strong>, and <strong>${stepCount} recorded steps</strong>.</p><p>${backupDogs.map(d=>E(d.profile.name||'Your dog')).join(', ')}</p><p>Restoring replaces all current dog profiles, progress, progress history, notes, plans, cues, and journals. Export your current records first if you want to keep both.</p><div class="button-row"><button class="button secondary" data-action="close-modal">Cancel</button><button class="button" data-action="restore-confirm">Restore backup</button></div>`);
+      openModal('Restore this backup?',`<p>This file contains <strong>${backupDogs.length} dog ${backupDogs.length===1?'profile':'profiles'}</strong>, <strong>${sessionCount} sessions</strong>, and <strong>${stepCount} recorded steps</strong>.</p><p>${backupDogs.map(d=>E(d.profile.name||'Your dog')).join(', ')}</p><p>This phone keeps its trainer identity. Notes retain their authorship; shared revision history and removals are preserved where possible. Restoring replaces current dog profiles, progress, progress history, notes, plans, cues, and journals. Export your current records first if you want to keep both.</p><div class="button-row"><button class="button secondary" data-action="close-modal">Cancel</button><button class="button" data-action="restore-confirm">Restore backup</button></div>`);
     } catch(error){toast(error.message,true);}
   }
   document.addEventListener('pointerdown',event=>{
@@ -652,6 +666,9 @@
     }
     const go=event.target.closest('[data-go]');if(go){if(dirty){requestLeave(path(go.dataset.go));}else navigate(go.dataset.go);return;}
     const el=event.target.closest('[data-action]');if(!el)return;
+    if(el.dataset.action?.startsWith('share-')){collaborationUI.action(el);return;}
+    if(el.dataset.action?.startsWith('nearby-')){void nearbyUI.action(el);return;}
+    if(el.dataset.action==='skip-familiar'){dailyQueue();const key=el.dataset.key;practiceOrder=practiceOrder.filter(k=>k!==key);practiceOrder.push(key);render({preserveScroll:true});$('#daily-practice-next')?.focus({preventScroll:true});return;}
     const {action,id,value}=el.dataset;
     switch(action){
       case 'change-dog-count':{
@@ -752,7 +769,8 @@
       case 'import':if(native)send('import');else $('#backup-file').click();break;
       case 'restore-confirm':{
         if(!pendingBackup)break;
-        const next={...pendingBackup,revision:Math.max(state.revision,pendingBackup.revision,Number(window.GOOD_GROUND_BOOT?.lastRevision)||0)+1,lastSavedAt:new Date().toISOString()};
+        nearbyUI?.onRoute('restore');send('nearbyDisconnect');practiceOrder=[];
+        const restored=S.restore(state,pendingBackup);const next={...restored,revision:Math.max(state.revision,pendingBackup.revision,Number(window.GOOD_GROUND_BOOT?.lastRevision)||0)+1,lastSavedAt:new Date().toISOString()};
         loadError='';state=C.validateState(next);needsDogChoice=C.dogs(state).length>1;guideIndex=0;pendingBackup=null;flush();closeModal();render();toast('Backup restored.');break;
       }
     }
@@ -766,7 +784,7 @@
     else if(el.id==='learn-search'){learnPage=0;learnQuery=el.value;$('#learn-results').innerHTML=learnResults();}
     else if(el.id==='topic-search'){const topic=el.dataset.topic;topicQueries.set(topic,el.value);topicPages.set(topic,0);$('#topic-results').innerHTML=libraryResults(librarySelection(el.value,topic,learnFilter),{kind:'topic',topic});}
     else if(el.id==='source-search')$('#source-results').innerHTML=sourcesResults(el.value);
-    else if(el.closest('form')&&!['dog-choice-form','household-count-form'].includes(el.closest('form').id))dirty=true;
+    else if(!el.closest('#modal-root')&&el.closest('form')&&!['dog-choice-form','household-count-form'].includes(el.closest('form').id))dirty=true;
   });
   document.addEventListener('change',event=>{
     const el=event.target;
@@ -782,7 +800,7 @@
     else if(el.name==='trendDog'){trendDogId=el.value;render();}
     else if(el.name==='planDog'){planDogId=el.value;render();}
     else if(el.id==='trend-trigger'){trendTrigger=el.value;render({preserveScroll:true});}
-    else if(el.closest('form')&&!['dog-choice-form','household-count-form'].includes(el.closest('form').id))dirty=true;
+    else if(!el.closest('#modal-root')&&el.closest('form')&&!['dog-choice-form','household-count-form'].includes(el.closest('form').id))dirty=true;
     if(el.id==='backup-file'&&el.files?.[0]){
       const file=el.files[0];if(file.size>5*1024*1024)toast('Choose a backup smaller than 5 MB.',true);else file.text().then(importText).catch(()=>toast('The backup file could not be read.',true));el.value='';
     }
@@ -790,6 +808,7 @@
   document.addEventListener('submit',event=>{
     event.preventDefault();const form=event.target;if(form.id==='feedback-form'){submitFeedback(form);return;}const f=new FormData(form),get=key=>String(f.get(key)||'').trim();
     if(loadError){toast('Restore a readable backup before saving new changes.',true);return;}
+    if(collaborationUI.submit(form))return;
     try{
       if(form.id==='household-count-form'){
         const count=get('householdSize')==='one'?1:Number(get('dogCount'));
@@ -821,7 +840,8 @@
         const dog=C.dogState(state,form.dataset.dogId),profile={...dog.profile};for(const key of Object.keys(profile).filter(k=>k!=='priorities'))profile[key]=get(key);profile.priorities=f.getAll('priority');
         if(C.dogs(state).length>1&&!profile.name)throw new Error('Please give every dog a name.');
         if(profile.name&&C.dogs(state).some(d=>d.id!==form.dataset.dogId&&d.profile.name.trim().toLocaleLowerCase()===profile.name.toLocaleLowerCase()))throw new Error('Choose a distinct name or nickname for this dog.');
-        if(commit(C.updateDog(state,form.dataset.dogId,d=>({...d,profile,tailoring:{...d.tailoring,traits:f.getAll('trait'),reviewedBreed:d.profile.breed===profile.breed?d.tailoring.reviewedBreed:''}})))){dirty=false;maybeBreedHint(form.dataset.dogId,()=>{navigate('today');toast('Profile saved.');});}
+        const shared=S.saveProfile(state,form.dataset.dogId,profile,JSON.parse(form.dataset.initialProfile),JSON.parse(form.dataset.profileHeads));
+        if(commit(C.updateDog(shared,form.dataset.dogId,d=>({...d,tailoring:{...d.tailoring,traits:f.getAll('trait'),reviewedBreed:d.profile.breed===profile.breed?d.tailoring.reviewedBreed:''}})))){dirty=false;maybeBreedHint(form.dataset.dogId,()=>{navigate('today');toast('Profile saved.');});}
       }else if(form.id==='plan-form'){
         const plan=Object.fromEntries(['setup','baseline','next','exit','notes'].map(k=>[k,get(k)]));
         if(commit(C.updateDog(state,form.dataset.dogId,d=>({...d,plans:{...d.plans,[form.dataset.id]:plan}})))){dirty=false;toast('Trigger plan saved.');}
@@ -913,8 +933,9 @@
     },
     flush:()=>{stageNotes();flush();},
     nativeMessage(message){
-      if(message.type==='saved'){acknowledged=Math.max(acknowledged,message.revision);if(settingsWaiter&&message.revision>=settingsWaiter.revision)settingsWaiter.resolve();if(acknowledged>=state.revision){saveStatus='Saved on this phone';showSave();}}
-      else if(message.type==='saveError'){settingsWaiter?.reject();saveStatus='Could not save — export a backup';showSave();toast(message.message,true);}
+      if(message.type?.startsWith('nearby')){void nearbyUI.event(message);return;}
+      if(message.type==='saved'){acknowledged=Math.max(acknowledged,message.revision);for(let i=saveWaiters.length-1;i>=0;i--)if(acknowledged>=saveWaiters[i].revision)saveWaiters.splice(i,1)[0].resolve();if(settingsWaiter&&message.revision>=settingsWaiter.revision)settingsWaiter.resolve();if(acknowledged>=state.revision){saveStatus='Saved on this phone';showSave();}}
+      else if(message.type==='saveError'){for(const w of saveWaiters.splice(0))w.reject();settingsWaiter?.reject();saveStatus='Could not save — export a backup';showSave();toast(message.message,true);}
       else if(message.type==='import')importText(message.json);
       else if(message.type==='error')toast(message.message,true);
     },
@@ -922,6 +943,7 @@
     snapshot:()=>C.validateState(state),
     ready:true
   };
+  if(!loadError)flush();
   render();
   if(window.GOOD_GROUND_BOOT?.smoke){
     setTimeout(async()=>{

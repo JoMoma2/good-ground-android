@@ -96,7 +96,7 @@ test('a paused dog blocks group practice of that step without erasing others’ 
 test('multi-dog backups round trip all dogs, selected subset and cues',()=>{
   let s=household();const ids=C.dogs(s).map(d=>d.id);
   s=C.updateDog(s,ids[1],d=>({...d,cues:{SIT:'Park'}}));s=C.selectDogs(s,[ids[1],ids[2]]);
-  const backup=C.makeBackup(s,D);assert.equal(backup.version,3);
+  const backup=C.makeBackup(s,D);assert.equal(backup.version,4);
   assert.deepEqual(C.parseBackup(JSON.stringify(backup)),C.validateState(s));
 });
 test('invalid household names, IDs, selections and duplicate journal IDs are rejected',()=>{

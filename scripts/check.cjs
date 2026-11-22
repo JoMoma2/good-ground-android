@@ -15,9 +15,9 @@ for(const s of D.skills){
 }
 for(const t of D.triggers)assert.ok(I.steps.has(t.step),t.name+' bad trigger link');
 for(const s of D.sources)assert.match(s.url,/^https?:\/\//);
-for(const f of ['index.html','styles.css','app.js','core.js','data.js','marker.js','guide.js','tailoring.js','history.js','lesson-controls.js'])assert.ok(fs.existsSync(root+'/app/web/'+f));
+for(const f of ['index.html','styles.css','app.js','core.js','data.js','marker.js','guide.js','tailoring.js','history.js','lesson-controls.js','sharing.js','nearby.js','collaboration-ui.js','nearby-ui.js'])assert.ok(fs.existsSync(root+'/app/web/'+f));
 const html=fs.readFileSync(root+'/app/web/index.html','utf8');assert.ok(html.includes("connect-src https://formspree.io/f/;"));assert.ok(html.includes('name="good-ground-feedback-form"'));
-for(const f of ['app.js','core.js','marker.js','guide.js','tailoring.js','history.js','lesson-controls.js','styles.css']){
+for(const f of ['app.js','core.js','marker.js','guide.js','tailoring.js','history.js','lesson-controls.js','sharing.js','nearby.js','collaboration-ui.js','nearby-ui.js','styles.css']){
   const content=fs.readFileSync(root+'/app/web/'+f,'utf8');assert.ok(!/https?:\/\//.test(f==='app.js'?content.replaceAll('https://formspree.io/f/','').replaceAll('https://formspree.io/legal/privacy-policy/',''):content),'Unexpected remote code/resource in '+f);
 }
 console.log(`PASS: ${I.skills.size} skills, ${I.steps.size} real teaching steps, ${sources.size} source records, valid prerequisites, bundled offline resources.`);

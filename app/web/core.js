@@ -4,6 +4,7 @@
   else root.GroundCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
+  const Sharing=typeof module==='object'&&module.exports?require('./sharing.js'):globalThis.GroundSharing;
   const STORAGE_BYTES = 5*1024*1024-65536;
   const withinStorageLimit = state => new TextEncoder().encode(JSON.stringify(state)).length <= STORAGE_BYTES;
   const STATUSES = ['Not started', 'Working on', 'Almost consistent', 'Consistent - move on', 'Paused'];
@@ -19,12 +20,12 @@
     return Number.isFinite(+d) && d.toISOString().slice(0,10) === s && +s.slice(0,4) >= 1900 && +s.slice(0,4) <= 2100;
   }
   function freshState() {
-    return {schema:1,revision:0,createdAt:new Date().toISOString(),cues:{},progressHistory:[],tailoring:{traits:[],reviewedBreed:''},household:{primaryId:'dog-1',others:[],selectedIds:['dog-1'],setupComplete:false,setupTarget:0,setupIndex:0,tutorialSeenVersion:0},profile:{name:'',age:'',breed:'',health:'',comfort:'',rewards:'',equipment:'',history:'',help:'',priorities:[]},progress:{},favorites:[],sessions:[],plans:{},settings:{theme:'light',textSize:'normal',markerSound:'click',markerVolume:25,lessonMarker:true,reminderDays:7,remindersDismissedOn:''}};
+    return {schema:1,trainer:Sharing.newTrainer(),collaboration:Sharing.empty(),revision:0,createdAt:new Date().toISOString(),cues:{},progressHistory:[],tailoring:{traits:[],reviewedBreed:''},household:{primaryId:'dog-1',others:[],selectedIds:['dog-1'],setupComplete:false,setupTarget:0,setupIndex:0,tutorialSeenVersion:0},profile:{name:'',age:'',breed:'',health:'',comfort:'',rewards:'',equipment:'',history:'',help:'',priorities:[]},progress:{},favorites:[],sessions:[],plans:{},settings:{theme:'light',textSize:'normal',markerSound:'click',markerVolume:25,lessonMarker:true,reminderDays:7,remindersDismissedOn:''}};
   }
   // Schema 1 remains the native file envelope. Primary dog fields stay at the
   // root for lossless migration; household.others holds complete additional dogs.
   // trainingView is a temporary projection: never save/export it. All dog writes
-  // must name their owner through updateDog/setDogProgress. Backups use version 3
+  // must name their owner through updateDog/setDogProgress. Backups use version 4
   // so older apps reject records rather than silently dropping dogs or history.
   const DOG_FIELDS=['profile','progress','sessions','plans','cues','tailoring','progressHistory'];
   function dogs(state) {
@@ -97,11 +98,11 @@
   function practiceRecords(data,state,now=new Date()) {
     return selectedDogs(state).flatMap(d=>maintenance(data,dogState(state,d.id),now).map(r=>({...r,dogId:d.id,dogName:d.profile.name}))).sort((a,b)=>(b.days??-1)-(a.days??-1));
   }
-  const FORMAT_GUARD='GOOD_GROUND_FORMAT_V2',FORMAT_STATUS='Requires Good Ground 1.2';
-  // The unchanged native shell requires schema 1. This reserved wire-only entry
+  const FORMAT_GUARD='GOOD_GROUND_FORMAT_V2',FORMAT_STATUS='Requires Good Ground 1.8';
+  // Keep the existing native file envelope at schema 1. This wire-only entry
   // makes an older JS validator stop safely instead of overwriting extra dogs.
   function storageState(state) {
-    return {...state,progress:{...state.progress,[FORMAT_GUARD]:{status:FORMAT_STATUS,notes:'Open these records with Good Ground 1.2 or later.',updatedAt:'format-v3'}}};
+    return {...state,progress:{...state.progress,[FORMAT_GUARD]:{status:FORMAT_STATUS,notes:'Open these records with Good Ground 1.8 or later.',updatedAt:'format-v4'}}};
   }
   function index(data) {
     const skills = new Map(), steps = new Map();
@@ -343,7 +344,7 @@
     if (!['light','dark','system'].includes(input.settings.theme)||!['normal','large'].includes(input.settings.textSize)) fail();
     if (input.favorites.length>10000||input.favorites.some(x=>!text(x,150))) fail();
     for (const [key,v] of Object.entries(input.progress)) {
-      if(key===FORMAT_GUARD){if(!plain(v)||![FORMAT_STATUS,'Requires Good Ground 1.1'].includes(v.status)||!text(v.notes)||!text(v.updatedAt,100))fail();continue;}
+      if(key===FORMAT_GUARD){if(!plain(v)||![FORMAT_STATUS,'Requires Good Ground 1.2','Requires Good Ground 1.1'].includes(v.status)||!text(v.notes)||!text(v.updatedAt,100))fail();continue;}
       if (!/^[A-Z0-9_-]{1,100}$/.test(key)||!plain(v)||!STATUSES.includes(v.status)||!text(v.notes)||!text(v.updatedAt,100)) fail();
     }
     for (const [key,v] of Object.entries(input.plans)) {
@@ -414,13 +415,13 @@
       if(h.others.length&&setupComplete){const names=[result.profile.name,...others.map(d=>d.profile.name)].map(n=>n.trim().toLocaleLowerCase());if(names.some(n=>!n)||new Set(names).size!==names.length)fail();}
       result.household={primaryId:h.primaryId,others,selectedIds:h.selectedIds.slice(),setupComplete,setupTarget:h.setupTarget,setupIndex:h.setupIndex,tutorialSeenVersion:h.tutorialSeenVersion};
     }
-    return result;
+    return Sharing.validate(input,result,STATUSES);
   }
-  const makeBackup = (state,data) => ({format:'good-ground-backup',version:3,exportedAt:new Date().toISOString(),curriculumVersion:data.version,state:validateState(state)});
+  const makeBackup = (state,data) => ({format:'good-ground-backup',version:4,exportedAt:new Date().toISOString(),curriculumVersion:data.version,state:validateState(state)});
   function parseBackup(text) {
     if (typeof text!=='string'||new TextEncoder().encode(text).length>5*1024*1024) throw new Error('Choose a Good Ground backup smaller than 5 MB.');
     let b; try {b=JSON.parse(text);} catch {throw new Error('This file is not valid JSON. Your current data has not been changed.');}
-    if (!plain(b)||b.format!=='good-ground-backup'||![1,2,3].includes(b.version)) throw new Error('Choose a Good Ground backup file (version 1, 2 or 3).');
+    if (!plain(b)||b.format!=='good-ground-backup'||![1,2,3,4].includes(b.version)) throw new Error('Choose a Good Ground backup file (version 1, 2, 3 or 4).');
     return validateState(b.state);
   }
   return {STORAGE_BYTES,withinStorageLimit,STATUSES,LABELS,rank,esc,uid,dateToday,validDate,freshState,storageState,FORMAT_GUARD,dogs,selectedDogs,dogState,updateDog,addDog,selectDogs,trainingView,trainingAvailable,startingAvailable,personalizedAvailable,setDogProgress,practiceRecords,dailyPractice,logPracticeToday,index,status,availability,stageLabel,touch,setProgress,summary,completionSnapshot,observeProgress,creditReplacements,relatedProjects,projectPlan,nextTeachingStep,available,nextChoices,downstreamSkills,daysBetween,practiceRecord,maintenance,elapsedLabel,MAINTENANCE_CODES,normalizeSession,sessionGuidance,observations,validateState,makeBackup,parseBackup};

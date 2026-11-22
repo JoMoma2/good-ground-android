@@ -1,4 +1,6 @@
-# Using Good Ground — 1.7.1
+> **1.8.0 / build 13:** Stable trainer identity, household rules, authored Training Notes and Skip for Now. Android wireless transport is not implemented; local features remain fully usable. See [collaboration and distribution status](NEARBY_TESTING.md).
+
+# Using Good Ground — 1.8.0
 
 Install or update Good Ground through the release channel provided with your copy. Keep the existing app installed when applying an update so its local records remain available.
 
@@ -18,6 +20,6 @@ Training works offline. Optional feedback requires an internet connection and se
 
 ## Updates and support
 
-Version 1.7.1 keeps curriculum 8, all existing dog records and backup format 3. Older supported backup formats remain importable. For a problem, note your device model, operating-system version, app version and the exact message. Export a backup before troubleshooting that could remove app data.
+Version 1.8.0 keeps curriculum 8 and existing dog records, adds the local trainer/rules/notes/Skip for Now features, and uses backup format 4. Formats 1–3 remain importable. Older apps cannot open new saves/exports; retain a pre-update backup for rollback. Nearby wireless is not implemented on Android. For a problem, note your device model, operating-system version, app version and the exact message. Export a backup before troubleshooting that could remove app data.
 
 Build instructions and signing details belong in [DEVELOPING.md](DEVELOPING.md). Local build artifacts do not establish publication through an app store.

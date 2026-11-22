@@ -1,20 +1,22 @@
+> **1.8.0 / build 13:** Stable trainer identity, household rules, authored Training Notes and Skip for Now. Android wireless transport is not implemented; local features remain fully usable. See [collaboration and distribution status](NEARBY_TESTING.md).
+
 > **1.7.1:** Standard platform help and backup guidance, with container-specific and development-installation instructions removed from the current user documentation. Curriculum 8 remains unchanged.
 
 > **Curriculum review, 1.7.0:** All 154 existing skills and all 384 previous active steps were reviewed for teaching accuracy, progression, welfare and evidence scope. Current curriculum: 386 steps, 45 historical steps and 87 source records. See [the complete review](research/CURRICULUM_REVIEW_2026-10-28.md).
 
-# Good Ground — Android 1.7.1
+# Good Ground — Android 1.8.0
 
 Offline dog training for Android 8.0+. This port shares the current iPhone training interface, curriculum 8: 154 active skills, 386 active teaching steps, 45 preserved earlier steps and 87 sources. Independent components, prerequisites, dropdowns, dog profiles, tailoring, clicker settings and real progress history remain intact.
 
 The Java Activity hosts only bundled HTML/CSS/JavaScript in Android WebView. The native bridge provides atomic private-file saves, previous-save recovery, Android document export/import, appearance, Back handling and safe-area/keyboard insets. References open in the external browser. Training requires no account and works offline. Optional feedback has narrowly allowed Internet access to Formspree; there is no analytics or automatic synchronization.
 
-The shared training core, curriculum, marker synthesis and styling are copied unchanged from iPhone. `app.js` adds Android bridge transport and Back handling, and adapts platform-specific help. No records are bundled with the app. JSON backup version 3 is shared with the current iPhone release; older supported backups remain importable.
+The shared training core, curriculum, marker synthesis and styling are copied unchanged from iPhone. `app.js` adds Android bridge transport and Back handling, and adapts platform-specific help. No records are bundled with the app. JSON backup version 4 is shared with the current iPhone release; older supported backups remain importable.
 
-[Install](INSTALL.md) · [Build and test](DEVELOPING.md) · [Validation and limitations](VALIDATION.md) · [Inherited curriculum decisions](docs/archive/CURRICULUM_REWORK.md)
+[Install](INSTALL.md) · [Build and test](DEVELOPING.md) · [Validation and limitations](VALIDATION.md) · [Curriculum review](research/CURRICULUM_REVIEW_2026-10-28.md)
 
-The original iPhone checkout and earlier Android repository are retained outside this project. See [the original port record](<../../../Archives/Development Records/ANDROID_PORT_RECORD.json>) for provenance and verified directory moves.
+The original iPhone checkout and earlier Android repository are retained outside this project. Historical port records remain in the user’s separate local archives and are not required to build this public checkout.
 
-This release contains 154 skills and 386 active teaching steps, including the 50 skills added in the earlier expansion. Today and Practice rhythm offer daily maintenance without changing completion. See [current update notes](UPDATE_NOTES.md) and [the earlier development report](docs/archive/DEVELOPMENT_REPORT_1.4.0.md) and [validation](VALIDATION.md).
+This release contains 154 skills and 386 active teaching steps, including the 50 skills added in the earlier expansion. Today and Practice rhythm offer daily maintenance without changing completion. See [current update notes](UPDATE_NOTES.md) and [validation](VALIDATION.md).
 
 ## Workspace organization
 

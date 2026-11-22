@@ -1,12 +1,13 @@
 // Uses the real bundled interface on Android's virtual HTTPS asset origin.
 // The Java transport is simulated here; the emulator workflow tests its real implementation.
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
+const engine=process.env.GG_BROWSER||'chromium';
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const C=require('../app/web/core.js'),D=require('../app/web/data.json');
 const root=path.resolve(__dirname,'..'),base='https://appassets.androidplatform.net/assets/web/';
-const report={checks:[],errors:[],nativeAndroidRuntimeTested:false};
+const report={engine,checks:[],errors:[],nativeAndroidRuntimeTested:false};
 (async()=>{
- const browser=await chromium.launch({headless:true});let state=null,exported=null;
+ const browser=await ({chromium,webkit}[engine]).launch({headless:true});let state=null,exported=null;
  const initial=C.freshState();initial.household.setupComplete=true;initial.household.tutorialSeenVersion=1;
  try{
   const context=await browser.newContext({viewport:{width:412,height:850},isMobile:true,hasTouch:true});
@@ -28,7 +29,7 @@ const report={checks:[],errors:[],nativeAndroidRuntimeTested:false};
     html=html.replace('<script defer src="data.js">','<script src="native-boot.js"></script><script defer src="data.js">');
     return route.fulfill({contentType:'text/html',body:html});
    }
-   if(!['app.js','core.js','data.js','styles.css','mark.svg','marker.js','guide.js','tailoring.js','history.js','lesson-controls.js'].includes(file))return route.abort();
+   if(!['app.js','core.js','data.js','styles.css','mark.svg','marker.js','guide.js','tailoring.js','history.js','lesson-controls.js','sharing.js','nearby.js','collaboration-ui.js','nearby-ui.js'].includes(file))return route.abort();
    return route.fulfill({path:root+'/app/web/'+file,contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'image/svg+xml'});
   });
   const p=await context.newPage();p.on('pageerror',e=>report.errors.push(e.message));
@@ -44,13 +45,21 @@ const report={checks:[],errors:[],nativeAndroidRuntimeTested:false};
    await p.evaluate(()=>location.hash='#/about');await p.getByRole('heading',{name:'On Android',exact:true}).waitFor();
    assert.equal(await p.getByRole('heading',{name:'In LiveContainer',exact:true}).count(),0);
   });
+  await check('Android v1.8 has one trainer and truthfully reports unavailable wireless',async()=>{
+   const identity=await p.evaluate(()=>GoodGround.snapshot().trainer.id);assert.match(identity,/^trainer_[a-f0-9]{32}$/);
+   await p.evaluate(()=>location.hash='#/trainer');await p.locator('[name=name]').fill('Android trainer');await p.getByRole('button',{name:'Save trainer name',exact:true}).click();assert.equal(await p.evaluate(()=>GoodGround.snapshot().trainer.id),identity);
+   await p.evaluate(()=>location.hash='#/nearby/dog-1');await p.getByRole('heading',{name:'Nearby sharing.',exact:true}).waitFor();
+   assert.equal(await p.getByRole('button',{name:'Look for Nearby Devices',exact:true}).count(),0);
+   assert.match(await p.locator('#main').textContent(),/not implemented in this Android version/);
+   assert.doesNotMatch(await p.locator('#main').textContent(),/Install a fresh iPhone build/);
+  });
   await check('Android bridge saves profile changes and exports the shared backup format',async()=>{
    await p.evaluate(()=>location.hash='#/profile');await p.locator('[name=name]').fill('Android test dog');
    await p.getByRole('button',{name:'Save profile',exact:true}).click();
    await p.waitForFunction(()=>GoodGround.snapshot().profile.name==='Android test dog');await p.waitForTimeout(100);
    assert.equal(state.profile.name,'Android test dog');
    await p.evaluate(()=>location.hash='#/backup');await p.getByRole('button',{name:'Save backup to Files',exact:true}).click();
-   await p.waitForTimeout(100);assert.equal(exported.state.profile.name,'Android test dog');assert.equal(exported.version,3);
+   await p.waitForTimeout(100);assert.equal(exported.state.profile.name,'Android test dog');assert.equal(exported.version,4);
   });
   await check('Android Back closes dialogs and guards unsaved forms',async()=>{
    await p.evaluate(()=>location.hash='#/learn');await p.waitForURL('**#/learn');
@@ -82,5 +91,5 @@ const report={checks:[],errors:[],nativeAndroidRuntimeTested:false};
   });
   assert.deepEqual(report.errors,[]);
  }catch(e){report.failure=e.stack;throw e;}
- finally{fs.mkdirSync(root+'/test-results',{recursive:true});fs.writeFileSync(root+'/test-results/android-ui.json',JSON.stringify(report,null,2)+'\n');await browser.close();}
+ finally{fs.mkdirSync(root+'/test-results',{recursive:true});fs.writeFileSync(root+'/test-results/android-ui-'+engine+'.json',JSON.stringify(report,null,2)+'\n');await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
