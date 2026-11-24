@@ -1,10 +1,12 @@
+> **1.8.1 / build 14:** Syncing is in More; Household Rules are at the top of Journal. iPhone discovery uses a LiveContainer-permitted service with authenticated encrypted pairing. A fresh native build is required. Android wireless remains unavailable. See [testing and platform status](NEARBY_TESTING.md).
+
 > **1.8.0 / build 13:** Stable trainer identity, household rules, authored Training Notes and Skip for Now. Android wireless transport is not implemented; local features remain fully usable. See [collaboration and distribution status](NEARBY_TESTING.md).
 
 > **1.7.1:** Standard platform help and backup guidance, with container-specific and development-installation instructions removed from the current user documentation. Curriculum 8 remains unchanged.
 
 > **Curriculum review, 1.7.0:** All 154 existing skills and all 384 previous active steps were reviewed for teaching accuracy, progression, welfare and evidence scope. Current curriculum: 386 steps, 45 historical steps and 87 source records. See [the complete review](research/CURRICULUM_REVIEW_2026-10-28.md).
 
-# Good Ground — Android 1.8.0
+# Good Ground — Android 1.8.1
 
 Offline dog training for Android 8.0+. This port shares the current iPhone training interface, curriculum 8: 154 active skills, 386 active teaching steps, 45 preserved earlier steps and 87 sources. Independent components, prerequisites, dropdowns, dog profiles, tailoring, clicker settings and real progress history remain intact.
 

@@ -93,7 +93,7 @@ async function main(){
    assert.equal(await page.locator('.tab.active').textContent(),'Lessons');
    assert.equal(await page.locator('.library-topic').count(),14);assert.equal(await page.locator('#learn-results .lesson-card').count(),0);
    await page.locator('#learn-search').fill('NAME-1');assert.equal(await page.locator('#learn-results .lesson-card').getAttribute('href'),'#/lesson/NAME-1');
-   await nav('#/more');assert.equal(await page.locator('.menu-row').count(),7);assert.equal(await page.getByRole('link',{name:/Your trainer profile/}).count(),1);
+   await nav('#/more');assert.equal(await page.locator('.menu-row').count(),8);assert.equal(await page.getByRole('link',{name:/Your trainer profile/}).count(),1);
    await page.getByRole('link',{name:/Source library/}).click();await page.getByRole('link',{name:'Evidence & limitations',exact:true}).waitFor();
   });
   await check('larger text scales headings, labels, controls and body text throughout the app',async()=>{

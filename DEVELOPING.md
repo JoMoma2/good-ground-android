@@ -1,8 +1,10 @@
+> **1.8.1 / build 14:** Syncing is in More; Household Rules are at the top of Journal. iPhone discovery uses a LiveContainer-permitted service with authenticated encrypted pairing. A fresh native build is required. Android wireless remains unavailable. See [testing and platform status](NEARBY_TESTING.md).
+
 > **1.8.0 / build 13:** Stable trainer identity, household rules, authored Training Notes and Skip for Now. Android wireless transport is not implemented; local features remain fully usable. See [collaboration and distribution status](NEARBY_TESTING.md).
 
 # Build and test Android
 
-Use JDK 17 or 21, Android SDK platform/build-tools 35, and `ANDROID_HOME` pointing to that SDK. The pinned wrapper is Gradle 8.11.1; Android Gradle Plugin is 8.9.2. Android Studio can open the `android` directory. Package `local.goodground.training`, versionCode 13, versionName 1.8.0; minSdk 26, targetSdk 35. No architecture-specific native libraries are used.
+Use JDK 17 or 21, Android SDK platform/build-tools 35, and `ANDROID_HOME` pointing to that SDK. The pinned wrapper is Gradle 8.11.1; Android Gradle Plugin is 8.9.2. Android Studio can open the `android` directory. Package `local.goodground.training`, versionCode 14, versionName 1.8.1; minSdk 26, targetSdk 35. No architecture-specific native libraries are used.
 
 ```sh
 npm ci

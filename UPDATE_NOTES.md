@@ -1,3 +1,13 @@
+# Good Ground 1.8.1 — build 14
+
+Syncing now has its own **More → Syncing** page with a dog selector and trainer connections/progress. Household Rules appear at the top of **Journal**, with a separate dog selector and Manage rules. They are no longer buried in dog profiles. Selecting a dog here does not change the training group or record practice.
+
+On iPhone, automatic discovery now uses LiveContainer's permitted `_http._tcp` service with Good Ground TXT/name filtering and a real, bounded HTTP Upgrade endpoint, followed by the existing signed, mutually approved encrypted protocol. This addresses 1.8.0's `_goodground._tcp` / `NoAuth -65555` service restriction. Both phones should use the fresh 1.8.1 native build for automatic discovery. Manual-address binary framing remains compatible with 1.8's wire protocol. No host app modification or central server is introduced. Physical LiveContainer testing remains required; native macOS loopback tests are distinct from phone discovery.
+
+Android receives the navigation changes and retains its explicitly unavailable wireless status. Version 1.8.1 / build 14 retains the reviewed curriculum and backup format 4. Existing dog records, trainer identities and remembered peers remain intact. New GitHub artifacts are an unsigned iPhone IPA and a separate debug-signed Android test APK.
+
+---
+
 # Good Ground Android 1.8.0 — build 13
 
 Adds one local trainer identity, independent trainer progress structures, dog-specific household rules, authored Training Notes under Extra Information, and Familiar Skills Skip for Now. Existing training data, journals, history, cues and settings are preserved. Skip changes order only, not progress or practice records. Curriculum 8 is unchanged: 154 skills, 386 active steps, 45 historical steps and 87 source records.

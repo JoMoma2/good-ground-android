@@ -104,3 +104,5 @@ html{scroll-padding-bottom:calc(var(--nav-height,calc(70px + var(--safe-bottom))
 .shared-step-list {padding-left:1.25rem}.shared-step-list li {margin:.9rem 0}.shared-step-list small {display:block;margin:.25rem 0}
 .verification-code {font-size:2.5rem;font-weight:700;letter-spacing:.2em;text-align:center;font-variant-numeric:tabular-nums}
 .nearby-status {overflow-wrap:anywhere}.daily-practice [data-action="skip-familiar"] {display:block;margin:.65rem auto 0}
+
+.journal-rule-list {padding-left:1.2rem}.journal-rule-list li {margin:.65rem 0}.journal-rule-list p {margin:.25rem 0;white-space:pre-wrap;overflow-wrap:anywhere}

@@ -1,6 +1,6 @@
 {
   "name": "good-ground-android",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "description": "Offline dog training companion for Android",
   "scripts": {

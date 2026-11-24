@@ -48,7 +48,7 @@ const report={engine,checks:[],errors:[],nativeAndroidRuntimeTested:false};
   await check('Android v1.8 has one trainer and truthfully reports unavailable wireless',async()=>{
    const identity=await p.evaluate(()=>GoodGround.snapshot().trainer.id);assert.match(identity,/^trainer_[a-f0-9]{32}$/);
    await p.evaluate(()=>location.hash='#/trainer');await p.locator('[name=name]').fill('Android trainer');await p.getByRole('button',{name:'Save trainer name',exact:true}).click();assert.equal(await p.evaluate(()=>GoodGround.snapshot().trainer.id),identity);
-   await p.evaluate(()=>location.hash='#/nearby/dog-1');await p.getByRole('heading',{name:'Nearby sharing.',exact:true}).waitFor();
+   await p.evaluate(()=>location.hash='#/nearby/dog-1');await p.getByRole('heading',{name:'Syncing.',exact:true}).waitFor();
    assert.equal(await p.getByRole('button',{name:'Look for Nearby Devices',exact:true}).count(),0);
    assert.match(await p.locator('#main').textContent(),/not implemented in this Android version/);
    assert.doesNotMatch(await p.locator('#main').textContent(),/Install a fresh iPhone build/);

@@ -1,6 +1,8 @@
+> **1.8.1 / build 14:** Syncing is in More; Household Rules are at the top of Journal. iPhone discovery uses a LiveContainer-permitted service with authenticated encrypted pairing. A fresh native build is required. Android wireless remains unavailable. See [testing and platform status](NEARBY_TESTING.md).
+
 > **1.8.0 / build 13:** Stable trainer identity, household rules, authored Training Notes and Skip for Now. Android wireless transport is not implemented; local features remain fully usable. See [collaboration and distribution status](NEARBY_TESTING.md).
 
-# Using Good Ground — 1.8.0
+# Using Good Ground — 1.8.1
 
 Install or update Good Ground through the release channel provided with your copy. Keep the existing app installed when applying an update so its local records remain available.
 

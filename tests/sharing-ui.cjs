@@ -65,9 +65,28 @@ async function main(){
    await nav(0,'#/nearby/dog-1');await pages[0].getByRole('button',{name:'Sync Now',exact:true}).click();for(const p of pages)await p.waitForFunction(()=>document.querySelector('.nearby-status')?.textContent.includes('Exchange confirmed'));assert.ok(S.records(await snap(1),'dog-1','rule')[0].deleted);
   });
   await check('disconnect revokes approval while retaining received read-only records',async()=>{
-   await nav(0,'#/household/dog-1');await pages[0].getByRole('button',{name:'Disconnect trainer',exact:true}).click();await pages[0].getByRole('dialog').getByRole('button',{name:'Disconnect trainer',exact:true}).click();const a=await snap(0);assert.equal(Object.values(S.data(a,'dog-1').peers)[0].approved,false);assert.equal(S.records(a,'dog-1','note').length,2);assert.ok(messages[0].some(m=>m.action==='nearbyForget'));
+   await nav(0,'#/nearby/dog-1');await pages[0].getByRole('button',{name:'Disconnect trainer',exact:true}).click();await pages[0].getByRole('dialog').getByRole('button',{name:'Disconnect trainer',exact:true}).click();const a=await snap(0);assert.equal(Object.values(S.data(a,'dog-1').peers)[0].approved,false);assert.equal(S.records(a,'dog-1','note').length,2);assert.ok(messages[0].some(m=>m.action==='nearbyForget'));
   });
   await check('old native builds truthfully disable wireless discovery while retaining local rules',async()=>{await boot(0,fresh('Quinten'),'#/nearby/dog-1',false);assert.equal(await pages[0].getByRole('button',{name:'Look for Nearby Devices',exact:true}).count(),0);assert.ok((await pages[0].locator('#main').textContent()).includes('fresh iPhone build'));await rule(0,'Bedtime','Calm and comfortable.');});
+  await check('More exposes independent Syncing with dog choice; profile is no longer its entry point',async()=>{
+   let s=C.addDog(fresh('Quinten'),{name:'Poppy'});const other=C.dogs(s)[1].id;await boot(0,s,'#/more');const p=pages[0];
+   if(await p.locator('#dog-choice-form').count())await p.getByRole('button',{name:'Let’s practice',exact:true}).click();
+   await nav(0,'#/more');await p.getByRole('link',{name:/^Syncing/}).click();await p.getByRole('heading',{name:'Syncing.',exact:true}).waitFor();
+   const before=await snap(0);await p.locator('[data-sync-dog]').selectOption(other);await p.waitForFunction(id=>document.querySelector('[data-sync-dog]')?.value===id,other);assert.deepEqual(await snap(0),before);
+   await p.getByRole('button',{name:'Look for Nearby Devices',exact:true}).click();assert.equal(await p.locator('[data-sync-dog]').isDisabled(),true);assert.equal(messages[0].filter(x=>x.action==='nearbyStart').at(-1).dogId,S.data(await snap(0),other).id);
+   await nav(0,'#/more');assert.ok(messages[0].some(x=>x.action==='nearbyStop'));
+   await nav(0,'#/profile/dog-1');assert.equal(await p.locator('a[href^="#/household"],a[href^="#/nearby"]').count(),0);
+  });
+  await check('Journal shows dog-specific rules above sessions, and selectors never change training records',async()=>{
+   let s=C.addDog(fresh('Quinten'),{name:'Poppy'});const other=C.dogs(s)[1].id;s=S.write(s,'dog-1','rule',null,{title:'Buddy dinner',description:'Wait comfortably.'});s=S.write(s,other,'rule',null,{title:'Poppy bedtime',description:'Settle with a comfortable routine.'});
+   await boot(0,s,'#/journal');const p=pages[0];if(await p.locator('#dog-choice-form').count())await p.getByRole('button',{name:'Let’s practice',exact:true}).click();await nav(0,'#/journal');
+   assert.ok((await p.locator('.journal-rules').textContent()).includes('Buddy dinner'));assert.ok(!(await p.locator('.journal-rules').textContent()).includes('Poppy bedtime'));
+   assert.ok(await p.locator('.journal-rules').evaluate(el=>!!(el.compareDocumentPosition(document.querySelector('a[href="#/session"]'))&Node.DOCUMENT_POSITION_FOLLOWING)));
+   const before=await snap(0);await p.locator('[data-rules-dog]').selectOption(other);assert.deepEqual(await snap(0),before);assert.ok((await p.locator('.journal-rules').textContent()).includes('Poppy bedtime'));assert.ok(!(await p.locator('.journal-rules').textContent()).includes('Buddy dinner'));
+   await p.getByRole('link',{name:'Manage rules',exact:true}).click();await p.getByRole('heading',{name:'Household rules.',exact:true}).waitFor();assert.equal(await p.locator('[data-rules-dog]').inputValue(),other);assert.equal(await p.locator('.tab.active').textContent(),'Journal');assert.equal(await p.getByRole('heading',{name:'Trainers',exact:true}).count(),0);
+   await p.getByRole('button',{name:'Add household rule',exact:true}).click();await p.locator('[name=title]').fill('Poppy mealtime');await p.getByRole('button',{name:'Save rule',exact:true}).click();const after=await snap(0);assert.equal(S.records(after,'dog-1','rule').length,1);assert.equal(S.records(after,other,'rule').length,2);assert.deepEqual(after.sessions,before.sessions);assert.deepEqual(after.progress,before.progress);
+   const axe=await new AxeBuilder({page:p}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+  });
   assert.deepEqual(report.errors,[]);
  }finally{fs.mkdirSync(root+'/test-results',{recursive:true});fs.writeFileSync(root+'/test-results/sharing-'+engine+'.json',JSON.stringify(report,null,2));await browser.close();server.close();}
 }
