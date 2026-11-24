@@ -11,6 +11,10 @@ concurrency:
 jobs:
   interface:
     runs-on: ubuntu-24.04
+    # Match package.json's Playwright version; image includes browsers and OS libraries.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+      options: --ipc=host --init
     timeout-minutes: 20
     strategy:
       matrix:
@@ -24,7 +28,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Show preinstalled browser executables
+        run: npx playwright install --list
       - name: Verify the full interface and simulated collaboration
         env:
           GG_BROWSER: ${{ matrix.browser }}
